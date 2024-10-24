@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIA CORES</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/Logo.png') }}" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <div class="text-center">
+        <img src="{{ url_for('static', filename='img/viacores.png') }}" alt="Logo ViaCores" class="logo">
+    </div>
+    <div class="container mt-5">
+        <h1 class="mb-4 text-center">Sistema de Estoque</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert alert-info" role="alert">
+                    {% for category, message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Formulário para Adicionar/Remover itens -->
+        <form method="POST" action="/add_remove_item" class="mb-4">
+            <div class="mb-3">
+                <label for="barcode" class="form-label" >Código de Barras (SKU):</label>
+                <input type="text" id="barcode" name="barcode" class="form-control" placeholder="SKU" required>
+            </div>
+            <div class="mb-3">
+                <label for="quantity" class="form-label">Quantidade:</label>
+                <input type="number" id="quantity" name="quantity" class="form-control" placeholder="Quantidade" required>
+            </div>
+
+            <!-- Campo de seleção de caixa -->
+            <div class="mb-3" id="caixaSelect" style="display:none;">
+                <label for="caixa" class="form-label">Selecione uma Caixa:</label>
+                <select id="caixa" name="caixa" class="form-select">
+                    <option value="">Escolha...</option>
+                    <option value="Caixa1">Caixa 1</option>
+                    <option value="Caixa2">Caixa 2</option>
+                    <option value="Caixa3">Caixa 3</option>
+                    <option value="Caixa4">Caixa 4</option>
+                </select>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" name="action" value="add" class="btn btn-success">Adicionar</button>
+                <button type="submit" name="action" value="remove" class="btn btn-danger ms-2">Remover</button>
+            </div>
+        </form>
+
+        <script>
+            document.getElementById('barcode').addEventListener('input', function() {
+                this.value = this.value.toUpperCase(); // Converte para maiúsculas
+                const sku = this.value;
+                const caixaSelect = document.getElementById('caixaSelect');
+                const prefixo = sku.slice(0, 2); // Obtém os dois primeiros caracteres
+
+                // Prefixos que precisam de seleção de caixa
+                const skusQuePrecisamCaixa = ["PV", "PH", "FF", "FH", "RV", "PR"];
+
+                // Verifica se o SKU começa com um prefixo que precisa de caixa
+                if (skusQuePrecisamCaixa.includes(prefixo)) {
+                    caixaSelect.style.display = 'block'; // Mostra o campo de seleção de caixa
+                } else {
+                    caixaSelect.style.display = 'none'; // Oculta o campo de seleção de caixa
+                }
+            });
+        </script>
+
+        <!-- Formulário para Impressão de Código de Barras -->
+        <form action="/print_barcode" method="GET" class="mb-4" id="barcodeForm">
+            <div class="mb-3">
+                <label for="print_barcode" class="form-label">Código para Impressão:</label>
+                <input type="text" id="print_barcode" name="sku" class="form-control" required placeholder="SKU" oninput="this.value = this.value.toUpperCase()">
+                <input type="number" id="print_quantity" name="quantity" class="form-control mt-2" placeholder="Quantidade" required>
+            </div>
+            <button type="submit" class="btn btn-secondary">Gerar Código de Barras</button>
+        </form>
+
+        <!-- Botão Mostrar Estoque -->
+        <button id="showStockButton" class="btn btn-primary mb-4">Mostrar Estoque</button>
+
+        <!-- Tabela de Estoque A-Z com Motor de Busca -->
+        <div id="stockTable" style="display:none;">
+            <h2 class="mb-4">Estoque Filtrado (A-Z)</h2>
+            <input type="text" id="searchBar" class="form-control mb-3" placeholder="Buscar item no estoque..." oninput="this.value = this.value.toUpperCase()">
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Quantidade</th>
+                        <th>Caixa</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTableBody">
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ item[0] }}</td>
+                        <td>{{ item[1] }}</td>
+                        <td>{{ item[2] or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Script para Filtrar e Buscar Itens no Estoque -->
+        <script>
+            document.getElementById('showStockButton').addEventListener('click', function() {
+                document.getElementById('stockTable').style.display = 'block';
+            });
+
+            document.getElementById('searchBar').addEventListener('input', function() {
+                const searchValue = this.value.toUpperCase(); // Converte para maiúsculas
+                const rows = document.querySelectorAll('#stockTableBody tr');
+                
+                rows.forEach(row => {
+                    const itemCode = row.children[0].textContent.toUpperCase(); // Converte para maiúsculas
+                    if (itemCode.includes(searchValue)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        </script>
+        <div class="text-end">
+            <!-- Botão para baixar o estoque em PDF -->
+            <a href="/download_pdf" class="btn btn-dark">Baixar Estoque em PDF</a>
+        </div>
+        <br>
+
+	<div class="text-center">
+		<footer>Versão beta --- Panther Code</footer>
+		
+	</div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </div>
+
+</body>
+</html>
